@@ -29,7 +29,7 @@ def get_args_parser():
         }
     parser = argparse.ArgumentParser('Set transformer detector', add_help=False)
     parser.add_argument('--lr', default=1e-4, type=float)
-    parser.add_argument('--batch_size', default=4, type=int)
+    parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--epochs', default=6000, type=int)
     parser.add_argument('--lr_drop', default=2000, type=int)
@@ -71,16 +71,16 @@ def get_args_parser():
     parser.add_argument('--Lv', default=1, type=float)
     parser.add_argument('--Myo', default=1, type=float)
     parser.add_argument('--Avg', default=1, type=float)
-    
+
     # dataset parameters
     parser.add_argument('--dataset', default='MSCMR_dataset', type=str,
                         help='multi-sequence CMR segmentation dataset')
     # set your outputdir 
-    parser.add_argument('--output_dir', default='/data/MSCMR_cycleMix/',
+    parser.add_argument('--output_dir', default='./data/MSCMR_cycleMix/',
                         help='path where to save, empty for no saving')
     parser.add_argument('--device', default='cuda', type=str,
                         help='device to use for training / testing')
-    parser.add_argument('--GPU_ids', type=str, default = '5', help = 'Ids of GPUs')    
+    parser.add_argument('--GPU_ids', type=str, default = '0', help = 'Ids of GPUs')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--resume', default='', help='resume from checkpoint')
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
@@ -174,6 +174,8 @@ def main(args):
         if not args.eval and 'optimizer' in checkpoint and 'epoch' in checkpoint:
             optimizer.load_state_dict(checkpoint['optimizer'])
             args.start_epoch = checkpoint['epoch'] + 1
+
+    optimizer.param_groups[0].update({'initial_lr': args.lr, 'lr': args.lr})  # replace checkpoint lr value to new lr
 
     if args.eval:
         infer(model, criterion, dataloader_train_dict, device)

@@ -10,7 +10,7 @@ import data.transforms as T
 
 def load_nii(img_path):
     nimg = nib.load(img_path)
-    return nimg.get_data(), nimg.affine, nimg.header
+    return nimg.get_fdata(), nimg.affine, nimg.header
 
 class mscmrSeg(data.Dataset):
     def __init__(self, img_folder, lab_folder, lab_values, transforms):
@@ -107,7 +107,7 @@ def make_transforms(image_set):
 
 def build(image_set, args):
     # set your data path
-    root = Path('/data/zhangke/datasets/' + args.dataset)
+    root = Path('./' + args.dataset)
     assert root.exists(), f'provided MSCMR path {root} does not exist'
     PATHS = {
         "train": (root / "train" / "images", root / "train" / "labels"),

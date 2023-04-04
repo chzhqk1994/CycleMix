@@ -16,6 +16,8 @@ import torchvision
 import matplotlib.pyplot as plt
 from cutout import Cutout, rotate_invariant, rotate_back
 from inference import keep_largest_connected_components
+import cv2
+
 
 class Visualize_train(nn.Module):
     def __init__(self):
@@ -84,6 +86,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     total_steps = sum(numbers.values())
     start_time = time.time()
     original_list,sample_list, output_list, target_list, target_ori_list, target_mixed_list =[], [], [], [], [], []
+
+    VISUALIZE = True
+
     for step in range(total_steps):
         start = time.time()
         tasks = [ t for t in tasks if counts[t] < numbers[t] ]
@@ -122,6 +127,14 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         losses.backward(retain_graph=True)
         ###
 
+        ############ model input , output img visualize ##########
+        if VISUALIZE:
+            _vis_unmixed_input_ = cv2.vconcat([x for x in samples_var.clone().cpu().data.numpy().squeeze()])
+            _vis_unmixed_labels_ = cv2.vconcat([cv2.hconcat(x) for x in targets_onehot.clone().cpu().numpy().squeeze()])
+            _vis_unmixed_output_ = cv2.vconcat([cv2.hconcat(x) for x in list(outputs.values())[0].clone().cpu().data.numpy().squeeze()])
+            _vis_unmixed_total_ = cv2.hconcat([_vis_unmixed_input_, _vis_unmixed_labels_, _vis_unmixed_output_])
+
+
         ### original output with unmixed input image:
         output_original = model(samples_var,task)
         ###
@@ -150,10 +163,26 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         samples_cut, targets_cut, masks_cut = Cutout(out, reweighted_target, device)
         ###
 
+        if VISUALIZE:
+            _vis_cut_input_no_rotat = cv2.vconcat(samples_cut.clone().cpu().data.numpy().squeeze())
+
         #rotate back
         samples_cut, targets_cut, angles = rotate_invariant(samples_cut, targets_cut)
+
+        if VISUALIZE:
+            _vis_rot_input_ = cv2.vconcat(samples_cut.clone().cpu().data.numpy().squeeze())
+
         masks_cut = masks_cut.to(device)
         outputs_cut = model(samples_cut, task)
+
+        ############ model input , output img visualize ##########
+        if VISUALIZE:
+
+            _vis_unmixed_input_ = cv2.vconcat([x for x in samples_cut.clone().cpu().data.numpy().squeeze()])
+            _vis_unmixed_labels_ = cv2.vconcat([cv2.hconcat(x) for x in targets_cut.clone().cpu().numpy().squeeze()])
+            _vis_unmixed_output_ = cv2.vconcat([cv2.hconcat(x) for x in list(outputs_cut.values())[0].clone().cpu().data.numpy().squeeze()])
+            _vis_cut_total_ = cv2.hconcat([_vis_unmixed_input_, _vis_unmixed_labels_, _vis_unmixed_output_])
+
         samples_cut_back, outputs_cut,targets_cut = rotate_back(samples_cut, outputs_cut["pred_masks"],targets_cut,angles)
         ###
 
@@ -171,6 +200,10 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             mixed_output[:,i,:,:] = output_original["pred_masks"][:,i,:,:] * mask_transport[:,0,:,:] + shuffled_output[:,i,:,:] * (1-mask_transport[:,0,:,:])
         mixed_output = mixed_output*masks_cut
         ###
+
+        if VISUALIZE:
+            _vis_shuffled_output = cv2.hconcat([x for x in shuffled_output.clone().cpu().data.numpy().squeeze()])
+            _vis_mixed_output = cv2.hconcat([x for x in mixed_output.clone().cpu().data.numpy().squeeze()])  # mixed image
 
         # save visualize images
         if step % 200 == 0:
